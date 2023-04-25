@@ -64,7 +64,32 @@ def auto_data():
     return data[2:]
 
 
+def clean_data(df):
+    # Удаление дубликатов
+    data = df.drop_duplicates()
+    # Удаление пропущенных значений
+    data = data.dropna()
+    # Удаление числовых значений
+    data['text'] = data['text'].apply(
+        lambda x: ' '.join(word for word in x.split() if not any(c.isdigit() for c in word)))
+    # Сброс индексов
+    data = data.reset_index(drop=True)
+    str_cols = data.select_dtypes(include=['object']).columns
+    # Удаление строк, содержащих неправильные значения
+    data = df.dropna(subset=str_cols)
+    data['text'] = data['text'].fillna('')
+    data['text'] = data['text'].astype(str)
+    data['tag'] = data['tag'].astype(str)
+    data['text'] = data['text'].apply(lambda x: x.lower())
+    data['tag'] = data['tag'].apply(lambda x: x.lower())
+    data = data[df.applymap(lambda x: isinstance(x, str)).all(axis=1)]
+    # Возврат очищенных данных
+
+    return data
+
+
 def train_data():
+    count=0
     texts = []
     tags = []
     for i in auto_data():
@@ -77,6 +102,7 @@ def train_data():
         else:
             texts.append(i)
             tags.append("Автомобильный транспорт")
+
     for i in boats_data():
         if "москв" in i.lower():
             texts.append(i)
@@ -87,6 +113,7 @@ def train_data():
         else:
             texts.append(i)
             tags.append("Водный транспорт")
+
     for i in railways_data():
         if "москв" in i.lower():
             texts.append(i)
@@ -97,11 +124,14 @@ def train_data():
         else:
             texts.append(i)
             tags.append("Железнодорожный транспорт")
+
     df = pd.DataFrame({'text': texts, 'tag': tags})
     df = df.dropna(how='any')
-    df.to_csv("train_data.csv", index=False, lineterminator='')
+    clean_data(df).to_csv("train_data.csv", index=False, lineterminator='')
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     train_data()
     df = pd.read_csv("train_data.csv")
     print(df.head())
+    print(df['text'].dtype)
